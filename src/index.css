@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --primary: #4f46e5;
+  --primary-strong: #4338ca;
+  --primary-soft: #eef2ff;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --text-primary: #0f172a;
+  --text-muted: #475569;
+  --border: #cbd5e1;
+  --shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+}
+
+@import "tailwindcss";
+
+/* Prevent page horizontal overflow caused by decorative elements */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Ensure the app body matches the dark theme to avoid white gaps */
+#root, body, html {
+  background-color: #0b1220;
+  color-scheme: dark;
+}
