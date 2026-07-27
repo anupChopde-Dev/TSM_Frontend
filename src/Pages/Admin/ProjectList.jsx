@@ -26,6 +26,14 @@ const sampleUsers = [
   { id: 'u4', name: 'Jorge Martinez' },
 ]
 
+const sampleTasks = [
+  { id: 't1', title: 'Design landing page', description: 'Create initial wireframes and mockups' },
+  { id: 't2', title: 'Implement auth API', description: 'Login, signup, and token refresh' },
+  { id: 't3', title: 'Write unit tests', description: 'Add tests for reducers and utils' },
+  { id: 't4', title: 'Setup CI', description: 'Configure GitHub Actions for tests' },
+  { id: 't5', title: 'Performance audit', description: 'Identify slow pages and optimize' },
+]
+
 const ProjectList = () => {
   const [projects, setProjects] = useState(initialProjects)
   const [open, setOpen] = useState(false)
@@ -36,9 +44,9 @@ const ProjectList = () => {
     const newProject = {
       id,
       name: data.projectName,
-      user: data.users?.map((u) => u.name).join(', ') || '—',
+      user: (data.users || []).map((u) => (u && u.name) || u).join(', ') || '—',
       timeline,
-      tasks: data.tasks || [],
+      tasks: data.selectedTaskIds || [],
     }
     setProjects((p) => [...p, newProject])
     setOpen(false)
@@ -95,6 +103,7 @@ const ProjectList = () => {
         open={open}
         onClose={() => setOpen(false)}
         users={sampleUsers}
+        availableTasks={sampleTasks}
         onCreate={handleCreateProject}
       />
     </>

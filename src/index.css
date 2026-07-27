@@ -23,3 +23,67 @@ html, body {
   background-color: #0b1220;
   color-scheme: dark;
 }
+
+/* react-day-picker dark theme adjustments: highlight numbers in range */
+.day-selected,
+.day-range-start,
+.day-range-end {
+  background-color: #06b6d4; /* cyan-400 */
+  color: #08121a; /* very dark text for contrast */
+  font-weight: 700;
+  border-radius: 9999px;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-range-middle {
+  background-color: rgba(6,182,212,0.12); /* subtle cyan fill */
+  color: #cbd5e1;
+}
+
+.rdp-day {
+  color: #cbd5e1; /* muted day numbers */
+}
+
+/* custom RangeCalendar styles */
+.rc-day {
+  border-radius: 0.375rem;
+  background: #071123; /* slight dark surface */
+  color: #cbd5e1;
+  border: 1px solid rgba(148,163,184,0.08);
+  box-sizing: border-box;
+}
+.rc-day:hover {
+  background: rgba(148,163,184,0.06);
+  color: #e6eef5;
+}
+
+/* selected and range styles should fill the entire cell and override border */
+.day-selected,
+.day-range-start,
+.day-range-end {
+  background-color: #0891b2; /* stronger cyan */
+  color: #071121; /* dark text for contrast */
+  font-weight: 700;
+  border-radius: 0.375rem;
+  width: 3rem;
+  height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(8,145,178,0.18);
+}
+
+.day-range-middle {
+  background-color: rgba(4, 108, 136, 0.615);
+  color: #cbd5e1;
+  border-radius: 2;
+}
+
+/* make sure non-current-month cells are visually subdued but still boxed */
+.rc-day.opacity-30 {
+  opacity: 0.4;
+}

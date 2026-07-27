@@ -1,31 +1,44 @@
-import React, { useEffect } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import React, { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import Button from './ui/Button'
 import Card from './ui/Card'
+import RangeCalendar from './RangeCalendar'
+import { format } from 'date-fns'
 
-const Modal = ({ open, onClose, users = [], onCreate }) => {
-  const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm({
+const Modal = ({ open, onClose, users = [], availableTasks = [], onCreate }) => {
+  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm({
     defaultValues: {
       projectName: '',
       users: [],
       startDate: '',
       endDate: '',
-      tasks: [{ title: '', assignee: '' }],
+      selectedTasks: [],
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'tasks' })
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [range, setRange] = useState({ from: undefined, to: undefined })
 
   useEffect(() => {
-    if (!open) reset()
+    if (!open) {
+      reset()
+      setRange({ from: undefined, to: undefined })
+      setShowCalendar(false)
+    }
   }, [open, reset])
 
+  function toggleSelectAll(val) {
+    if (val) setValue('selectedTasks', availableTasks.map((t) => t.id))
+    else setValue('selectedTasks', [])
+  }
+
   function onSubmit(data) {
-    // Map assignee ids to user objects
     const mapped = {
-      ...data,
+      projectName: data.projectName,
       users: (data.users || []).map((id) => users.find((u) => u.id === id)).filter(Boolean),
-      tasks: (data.tasks || []).map((t) => ({ ...t, assignee: users.find((u) => u.id === t.assignee) || null })),
+      startDate: data.startDate,
+      endDate: data.endDate,
+      selectedTaskIds: data.selectedTasks || [],
     }
     if (onCreate) onCreate(mapped)
     else console.log('Project create', mapped)
@@ -33,6 +46,8 @@ const Modal = ({ open, onClose, users = [], onCreate }) => {
   }
 
   if (!open) return null
+
+  const selected = watch('selectedTasks') || []
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -65,38 +80,59 @@ const Modal = ({ open, onClose, users = [], onCreate }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300">Start date</label>
-                <input type="date" {...register('startDate', { required: 'Start date required' })} className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-white" />
-                {errors.startDate && <p className="mt-1 text-xs text-rose-400">{errors.startDate.message}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300">End date</label>
-                <input type="date" {...register('endDate', { required: 'End date required', validate: (v) => v >= watch('startDate') || 'End date should be after start date' })} className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-white" />
-                {errors.endDate && <p className="mt-1 text-xs text-rose-400">{errors.endDate.message}</p>}
+            <div>
+              <label className="block text-sm font-medium text-slate-300">Select date range</label>
+              <div className="mt-2 relative">
+                <input
+                  readOnly
+                  value={range.from && range.to ? `${format(range.from, 'yyyy-MM-dd')} — ${format(range.to, 'yyyy-MM-dd')}` : ''}
+                  onFocus={() => setShowCalendar(true)}
+                  className="mt-2 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800/90 px-3 py-2 text-white"
+                />
+                {showCalendar && (
+                  <div className="absolute left-1/2 -translate-x-1/2 z-40 mt-2 bg-slate-800/95 p-4 rounded-lg shadow-xl">
+                    <RangeCalendar
+                      selected={range}
+                      onSelect={(r) => {
+                        setRange(r || { from: undefined, to: undefined })
+                        if (r && r.from) setValue('startDate', format(r.from, 'yyyy-MM-dd'))
+                        if (r && r.to) setValue('endDate', format(r.to, 'yyyy-MM-dd'))
+                        if (r && r.from && r.to) setShowCalendar(false)
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-300">Tasks</label>
-                <button type="button" onClick={() => append({ title: '', assignee: '' })} className="text-sm text-cyan-300">+ add</button>
+                <label className="block text-sm font-medium text-slate-300">Select tasks</label>
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" onChange={(e) => toggleSelectAll(e.target.checked)} checked={selected.length === availableTasks.length && availableTasks.length > 0} />
+                    <span className="text-slate-300">Select all</span>
+                  </label>
+                </div>
               </div>
 
-              <div className="mt-3 space-y-3">
-                {fields.map((field, idx) => (
-                  <div key={field.id} className="flex items-start gap-2">
-                    <input {...register(`tasks.${idx}.title`, { required: 'Task title required' })} placeholder="Task title" className="w-2/3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-white" />
-                    <select {...register(`tasks.${idx}.assignee`)} className="w-1/3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-white">
-                      <option value="">Unassigned</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                    <button type="button" onClick={() => remove(idx)} className="text-rose-400">Remove</button>
+              <div className="mt-3 max-h-64 overflow-y-auto rounded-md border border-slate-800 p-3">
+                {availableTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-3 py-2">
+                    <input type="checkbox" value={t.id} {...register('selectedTasks')} className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium text-white">{t.title}</div>
+                      <div className="text-xs text-slate-400">{t.description || ''}</div>
+                    </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" onChange={(e) => toggleSelectAll(e.target.checked)} checked={selected.length === availableTasks.length && availableTasks.length > 0} />
+                  <span className="text-slate-300">Select all</span>
+                </label>
               </div>
             </div>
 
