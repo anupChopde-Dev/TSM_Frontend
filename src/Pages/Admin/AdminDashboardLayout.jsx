@@ -7,14 +7,14 @@ import Button from '../../components/ui/Button'
 import ProjectList from './ProjectList'
 import Users from './Users'
 import Reports from './Reports'
-import Settings from './Settings'
+import TaskList from './TaskList'
 
 const navItems = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
   { id: 'projects', label: 'Projects', icon: <LayoutGrid size={18} /> },
   { id: 'users', label: 'Users', icon: <UsersIcon size={18} /> },
   { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
-  { id: 'settings', label: 'Settings', icon: <SettingsIcon size={18} /> },
+  { id: 'tasks', label: 'Task List', icon: <SettingsIcon size={18} /> },
 ]
 
 const AdminDashboardLayout = () => {
@@ -167,7 +167,7 @@ const AdminDashboardLayout = () => {
 
           {activeItem === "reports" && <Reports />}
 
-          {activeItem === "settings" && <Settings />}
+          {activeItem === "tasks" && <TaskList />}
         </section>
       </div>
     </main>
