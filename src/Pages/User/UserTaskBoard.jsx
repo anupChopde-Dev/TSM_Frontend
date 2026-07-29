@@ -115,11 +115,7 @@ const UserTaskBoard = () => {
 
   return (
     <div>
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/10">
-        <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Your task board</p>
-        <h2 className="mt-2 text-3xl font-semibold text-white">Work in progress</h2>
-        <p className="mt-2 text-sm text-slate-400">Drag tasks between columns to update progress and stay on top of your work.</p>
-      </div>
+      
 
       <div className="mt-6">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>

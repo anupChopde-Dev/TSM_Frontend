@@ -1,16 +1,26 @@
 import React from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import toast from 'react-hot-toast'
+import api from '../../api/axiosClient'
+import useApi from '../../hooks/useApi'
 import Card from '../../components/ui/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
-import Button from '../../components/ui/Button'
-
-const users = [
-  { id: 'u1', name: 'Alicia Reed', email: 'alicia@taskflow.com', role: 'Manager' },
-  { id: 'u2', name: 'Devon Clarke', email: 'devon@taskflow.com', role: 'Developer' },
-  { id: 'u3', name: 'Priya Singh', email: 'priya@taskflow.com', role: 'Tester' },
-  { id: 'u4', name: 'Jorge Martinez', email: 'jorge@taskflow.com', role: 'Designer' },
-]
 
 const Users = () => {
+  const { data: users = [], loading, error, refetch } = useApi('/api/users', {}, { dedupe: false })
+
+  const handleToggleBlock = async (user) => {
+    console.log(user)
+    try {
+      await api.patch(`/api/users/${user.id}/block`, { isBlock: !user.isBlock })
+      await refetch()
+      toast.success(`User ${user.username} is now ${user.isBlock ? 'active' : 'inactive'}`)
+    } catch (err) {
+      console.error('Failed to update user status', err)
+      toast.error('Could not update user status')
+    }
+  }
+
   return (
     <Card>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -18,29 +28,67 @@ const Users = () => {
           <h2 className="text-xl font-semibold text-white">Users</h2>
           <p className="mt-2 text-sm text-slate-400">Manage users and access roles across the platform.</p>
         </div>
-        <Button variant="secondary">Invite user</Button>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/80">
-        <Table>
-          <TableHeader>
-            <tr>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-            </tr>
-          </TableHeader>
+      <div className="mt-6  border border-slate-800 bg-slate-950/80">
+        <div className="max-h-[350px] overflow-auto">
+          <Table>
+            <TableHeader>
+              <tr className="border-b border-slate-800">
+                <TableHead>Username</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-center">Action</TableHead>
+              </tr>
+            </TableHeader>
+
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell className="text-cyan-300">{user.role}</TableCell>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-slate-400">
+                  Loading users...
+                </TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-rose-300">
+                  Failed to load users.
+                </TableCell>
+              </TableRow>
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-slate-400">
+                  No users found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow key={user._id}>
+                  <TableCell className="font-medium text-white">{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="text-slate-400">{user.createdAt ? user.createdAt.slice(0, 10) : '—'}</TableCell>
+                  <TableCell className={user.isBlock ? 'text-rose-300' : 'text-emerald-300'}>
+                    {user.isBlock ? 'Inactive' : 'Active'}
+                  </TableCell>
+                  <TableCell className="px-6 py-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBlock(user)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-cyan-400 hover:text-cyan-300"
+                      aria-label={user.isBlock ? `Activate ${user.username}` : `Block ${user.username}`}
+                    >
+                      {user.isBlock ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+      </div>
+
     </Card>
   )
 }
