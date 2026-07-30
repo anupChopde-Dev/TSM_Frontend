@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'react-toastify'
+import { useDispatch } from 'react-redux'
+import { loginSuccess } from '../../store/authSlice'
 
 const signupSchema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters'),

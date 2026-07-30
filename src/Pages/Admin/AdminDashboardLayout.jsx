@@ -11,10 +11,10 @@ import TaskList from './TaskList'
 
 const navItems = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
-  { id: 'projects', label: 'Projects', icon: <LayoutGrid size={18} /> },
   { id: 'users', label: 'Users', icon: <UsersIcon size={18} /> },
-  { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
+  { id: 'projects', label: 'Projects', icon: <LayoutGrid size={18} /> },
   { id: 'tasks', label: 'Task List', icon: <SettingsIcon size={18} /> },
+  { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
 ]
 
 const AdminDashboardLayout = () => {
@@ -161,13 +161,12 @@ const AdminDashboardLayout = () => {
             </div>
           )}
 
-          {activeItem === "projects" && <ProjectList />}
-
           {activeItem === "users" && <Users />}
+          {activeItem === "projects" && <ProjectList />}
+          {activeItem === "tasks" && <TaskList />}
 
           {activeItem === "reports" && <Reports />}
 
-          {activeItem === "tasks" && <TaskList />}
         </section>
       </div>
     </main>

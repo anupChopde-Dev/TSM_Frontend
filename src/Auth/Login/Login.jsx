@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from 'react-toastify'
+import { useDispatch } from 'react-redux'
+import { loginSuccess } from '../../store/authSlice'
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -16,6 +18,7 @@ const loginSchema = z.object({
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const {
     register,
     handleSubmit,
@@ -33,9 +36,24 @@ const Login = () => {
         password: data.password,
       })
 
-      const { accessToken, refreshToken, isAdmin, message } = response.data || {}
+      const { accessToken, refreshToken, isAdmin, user, message } = response.data || {}
       setTokens({ accessToken, refreshToken })
+
+      const rawUser = user || response.data || {}
+      const userData = {
+        ...rawUser,
+        id: rawUser.id || rawUser._id || response.data?.id,
+        email: rawUser.email || data.email,
+      }
+
       localStorage.setItem('isAdmin', isAdmin === true ? 'true' : 'false')
+      localStorage.setItem('userData', JSON.stringify(userData))
+      
+      const authUser = { ...userData }
+      delete authUser.password
+      
+      dispatch(loginSuccess({ user: authUser, token: accessToken }))
+      
       toast.success(message || 'Login successful!')
       if (isAdmin === true) {
         navigate('/admin')

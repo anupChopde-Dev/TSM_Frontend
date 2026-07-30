@@ -1,153 +1,346 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
   PointerSensor,
+  closestCorners,
+  useDroppable,
   useSensor,
   useSensors,
-} from '@dnd-kit/core'
-import { useSortable, SortableContext, arrayMove } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+} from "@dnd-kit/core";
 
-const initialData = {
-  todo: [
-    { id: 't1', title: 'Design login UI' },
-    { id: 't2', title: 'Write auth API' },
-  ],
-  inprogress: [{ id: 'p1', title: 'Integrate RHF forms' }],
-  review: [{ id: 'r1', title: 'Code review for tasks' }],
-  complete: [{ id: 'c1', title: 'Project setup' }],
-}
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 
-function Card({ item }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id })
+import { CSS } from "@dnd-kit/utilities";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProjectTasks, fetchUpdateTaskStaus, setTasks } from "../../store/projectSlice";
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+// ---------------- API DATA ----------------
+const apiData = [
+  {
+    id: "6a69f2ba2650d25cc9db6c7c",
+    taskName: "Implement API",
+    description: "API Integration",
+    sp: 2,
+    priority: "Medium",
+    status: "todo",
+  },
+  {
+    id: "6a69f29f2650d25cc9db6c7a",
+    taskName: "Create Form",
+    description: "Create User Form",
+    sp: 5,
+    priority: "High",
+    status: "todo",
+  },
+  {
+    id: "6a69f29f2650d25cc9db6c7b",
+    taskName: "Testing",
+    description: "Testing Module",
+    sp: 3,
+    priority: "Low",
+    status: "review",
+  },
+  {
+    id: "6a69f29f2650d25cc9db6c7d",
+    taskName: "Deployment",
+    description: "Deploy Project",
+    sp: 8,
+    priority: "Urgent",
+    status: "completed",
+  },
+];
 
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="cursor-move rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-white shadow-sm">
-      {item.title}
-    </div>
-  )
-}
+// -------- Group Tasks by Status ----------
+const groupTasks = (tasks) => ({
+  todo: tasks?.filter((task) => task.status === "todo"),
+  inprogress: tasks?.filter((task) => task.status === "inprogress"),
+  review: tasks?.filter((task) => task.status === "review"),
+  completed: tasks?.filter((task) => task.status === "completed"),
+});
 
-const Column = ({ id, title, items }) => (
-  <div className="flex min-h-[260px] w-full flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-slate-300">
-    <div className="flex items-center justify-between">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-xs text-slate-300">{items.length}</span>
-    </div>
+export default function TodoBoard() {
+  const tasks = useSelector((state) => state.project.tasks)
 
-    <SortableContext items={items.map((i) => i.id)}>
-      <div className="mt-3 flex flex-1 flex-col gap-3" data-dropzone={id}>
-        {items.map((it) => (
-          <Card key={it.id} item={it} />
-        ))}
+  const [activeTask, setActiveTask] = useState(null);
 
-        <div className="mt-auto text-xs text-slate-500">Drop items here</div>
-      </div>
-    </SortableContext>
-  </div>
-)
+  const columns = useMemo(() => groupTasks(tasks), [tasks]);
+  console.log('columns', columns)
+  const dispatch = useDispatch()
 
-const UserTaskBoard = () => {
-  const [columns, setColumns] = useState(initialData)
-  const [activeId, setActiveId] = useState(null)
+  const sensors = useSensors(useSensor(PointerSensor));
 
-  const sensors = useSensors(useSensor(PointerSensor))
+  const priorityColor = {
+    High: "#ef4444",
+    Medium: "#f59e0b",
+    Low: "#22c55e",
+    Urgent: "#dc2626",
+  };
 
   const findContainer = (id) => {
-    for (const key of Object.keys(columns)) {
-      if (columns[key].some((it) => it.id === id)) return key
-    }
-    return null
+
+  if (["todo", "inprogress", "review", "completed"].includes(id)) {
+    return id;
   }
 
-  const onDragStart = (event) => setActiveId(event.active.id)
+  return Object.keys(columns).find((key) =>
+    columns[key]?.some((item) => item.id === id)
+  );
+};
 
-  const onDragEnd = (event) => {
-    const { active, over } = event
-    setActiveId(null)
-    if (!over) return
+  const findTask = (id) => {
+    return tasks.find((task) => task.id === id);
+  };
 
-    const activeId = active.id
-    const overId = over.id
-    const from = findContainer(activeId)
-    const to = findContainer(overId) || overId
-    if (!from || !to) return
+  // ---------------- DRAG START ----------------
 
-    if (from === to) {
-      const idxs = columns[from].map((it) => it.id)
-      const oldIndex = idxs.indexOf(activeId)
-      const newIndex = idxs.indexOf(overId)
-      if (oldIndex !== newIndex) {
-        setColumns((prev) => ({
-          ...prev,
-          [from]: arrayMove(prev[from], oldIndex, newIndex),
-        }))
-      }
-    } else {
-      setColumns((prev) => {
-        const sourceItems = [...prev[from]]
-        const moving = sourceItems.find((it) => it.id === activeId)
-        const newSource = sourceItems.filter((it) => it.id !== activeId)
+  const handleDragStart = ({ active }) => {
+    setActiveTask(findTask(active.id));
+  };
 
-        const targetItems = [...prev[to]]
-        const overIndex = targetItems.findIndex((it) => it.id === overId)
-        const insertAt = overIndex === -1 ? targetItems.length : overIndex + 1
+  // ---------------- DRAG END ----------------
 
-        const newTarget = [...targetItems.slice(0, insertAt), moving, ...targetItems.slice(insertAt)]
+  const handleDragEnd = ({ active, over }) => {
+    setActiveTask(null);
 
-        return {
-          ...prev,
-          [from]: newSource,
-          [to]: newTarget,
-        }
-      })
+    if (!over) return;
+
+    const activeContainer = findContainer(active.id);
+    const overContainer = findContainer(over.id);
+
+    if (!activeContainer || !overContainer) return;
+
+    // Copy current grouped columns
+    const updatedColumns = groupTasks(tasks);
+
+    // Same Column Sorting
+    if (activeContainer === overContainer) {
+      const oldIndex = updatedColumns[activeContainer].findIndex(
+        (t) => t.id === active.id
+      );
+
+      const newIndex = updatedColumns[activeContainer].findIndex(
+        (t) => t.id === over.id
+      );
+
+      if (oldIndex === newIndex) return;
+
+      updatedColumns[activeContainer] = arrayMove(
+        updatedColumns[activeContainer],
+        oldIndex,
+        newIndex
+      );
+
+      const newTasks = [
+        ...updatedColumns.todo,
+        ...updatedColumns.inprogress,
+        ...updatedColumns.review,
+        ...updatedColumns.completed,
+      ];
+
+      setTasks(newTasks);
+
+      return;
     }
+
+    // ---------------- Move Between Columns ----------------
+
+   const oldTask = findTask(active.id);
+
+if (!oldTask) return;
+
+
+const movedTask = {
+  ...oldTask,
+  status: overContainer,
+};
+
+
+// Optimistic update
+const updatedTasks = tasks.map((task) =>
+  task.id === active.id ? movedTask : task
+);
+
+
+dispatch(setTasks(updatedTasks));
+
+
+// API update
+const payload = {
+  id: movedTask.id,
+  status: movedTask.status,
+  userId: movedTask.userId,
+  projectId: movedTask.projectId,
+};
+
+
+dispatch(fetchUpdateTaskStaus(payload))
+.unwrap()
+.then(() => {
+  dispatch(fetchProjectTasks(movedTask.projectId));
+})
+.catch(() => {
+  // rollback if API fails
+  dispatch(setTasks(tasks));
+});
+  };
+
+  // ---------------- COLUMN ----------------
+
+  function Column({ id, title, tasks }) {
+    const { setNodeRef, isOver } = useDroppable({
+      id,
+    });
+
+    return (
+      <SortableContext
+        items={tasks.map((task) => task.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div
+          ref={setNodeRef}
+          className="rounded-xl p-4 min-h-[500px] transition-all"
+          style={{
+            background: isOver
+              ? "var(--primary-soft)"
+              : "var(--surface)",
+            border: `2px solid ${isOver ? "var(--primary)" : "var(--border)"
+              }`,
+            boxShadow: "var(--shadow)",
+          }}
+        >
+          <h2
+            className="font-semibold text-lg mb-4"
+            style={{
+              color: "var(--text-primary)",
+            }}
+          >
+            {id} ({tasks.length})
+          </h2>
+
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </div>
+        </div>
+      </SortableContext>
+    );
   }
 
-  const onDragCancel = () => setActiveId(null)
+  // ---------------- CARD ----------------
+
+  function TaskCard({ task, overlay }) {
+    const sortable = useSortable({
+      id: task.id,
+    });
+
+    const style = overlay
+      ? {}
+      : {
+        transform: CSS.Transform.toString(sortable.transform),
+        transition: sortable.transition,
+        opacity: sortable.isDragging ? 0.4 : 1,
+      };
+
+    return (
+      <div
+        ref={overlay ? null : sortable.setNodeRef}
+        style={{
+          ...style,
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: overlay
+            ? "0 20px 40px rgba(79,70,229,.18)"
+            : "0 4px 12px rgba(15,23,42,.08)",
+        }}
+        {...(!overlay ? sortable.attributes : {})}
+        {...(!overlay ? sortable.listeners : {})}
+        className="rounded-xl p-4 cursor-grab active:cursor-grabbing"
+      >
+        <div className="flex justify-between items-start mb-2">
+          <h3
+            className="font-semibold"
+            style={{
+              color: "var(--text-primary)",
+            }}
+          >
+            {task.taskName}
+          </h3>
+
+          <span
+            className="px-2 py-1 rounded-full text-xs text-white"
+            style={{
+              background: priorityColor[task.priority],
+            }}
+          >
+            {task.priority}
+          </span>
+        </div>
+
+        <p
+          className="text-sm"
+          style={{
+            color: "var(--text-muted)",
+          }}
+        >
+          {task.description}
+        </p>
+
+        <div
+          className="mt-3 text-sm font-semibold"
+          style={{
+            color: "var(--primary)",
+          }}
+        >
+          SP : {task.sp}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/10">
-        <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Your task board</p>
-        <h2 className="mt-2 text-3xl font-semibold text-white">Work in progress</h2>
-        <p className="mt-2 text-sm text-slate-400">Drag tasks between columns to update progress and stay on top of your work.</p>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div
+        className="grid grid-cols-4 gap-6 p-6 rounded-2xl"
+        style={{
+          background: "var(--surface-soft)",
+        }}
+      >
+        <Column id="todo" title="Todo" tasks={columns.todo} />
+
+        <Column
+          id="inprogress"
+          title="In Progress"
+          tasks={columns.inprogress}
+        />
+
+        <Column
+          id="review"
+          title="Review"
+          tasks={columns.review}
+        />
+
+        <Column
+          id="completed"
+          title="Completed"
+          tasks={columns.completed}
+        />
       </div>
 
-      <div className="mt-6">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-            <Column id="todo" title="Todo" items={columns.todo} />
-            <Column id="inprogress" title="In Progress" items={columns.inprogress} />
-            <Column id="review" title="Review" items={columns.review} />
-            <Column id="complete" title="Complete" items={columns.complete} />
-          </div>
-
-          <DragOverlay>
-            {activeId ? (
-              (() => {
-                const all = Object.values(columns).flat()
-                const item = all.find((it) => it.id === activeId)
-                if (!item) return null
-                return (
-                  <div className="pointer-events-none rounded-lg border border-slate-700 bg-slate-800/90 px-4 py-2 text-sm font-medium text-white shadow-2xl">
-                    {item.title}
-                  </div>
-                )
-              })()
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
-    </div>
-  )
+      <DragOverlay>
+        {activeTask && <TaskCard task={activeTask} overlay />}
+      </DragOverlay>
+    </DndContext>
+  );
 }
-
-export default UserTaskBoard
