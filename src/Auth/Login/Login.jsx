@@ -38,13 +38,21 @@ const Login = () => {
 
       const { accessToken, refreshToken, isAdmin, user, message } = response.data || {}
       setTokens({ accessToken, refreshToken })
-      
-      const userData = user || { id: response.data?.id, email: data.email }
-      
+
+      const rawUser = user || response.data || {}
+      const userData = {
+        ...rawUser,
+        id: rawUser.id || rawUser._id || response.data?.id,
+        email: rawUser.email || data.email,
+      }
+
       localStorage.setItem('isAdmin', isAdmin === true ? 'true' : 'false')
       localStorage.setItem('userData', JSON.stringify(userData))
       
-      dispatch(loginSuccess({ user: userData, token: accessToken }))
+      const authUser = { ...userData }
+      delete authUser.password
+      
+      dispatch(loginSuccess({ user: authUser, token: accessToken }))
       
       toast.success(message || 'Login successful!')
       if (isAdmin === true) {

@@ -6,8 +6,7 @@ export const fetchProjectOptions = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     try {
       const res = await api.get(`/api/projects/user/${userId}/options`)
-      console.log('res',res)
-      return res.data.projects
+      return res.data.projects || []
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch projects')
     }
@@ -16,12 +15,39 @@ export const fetchProjectOptions = createAsyncThunk(
 
 export const fetchProjectTasks = createAsyncThunk(
   'project/fetchTasks',
-  async (data, { rejectWithValue }) => {
+  async (projectId, { getState, rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/tasks/project/${data.projectId}/user/${data.userId}`)
+      const userId =
+        getState().auth.user?.id ||
+        (() => {
+          try {
+            return JSON.parse(localStorage.getItem('userData'))?.id
+          } catch {
+            return null
+          }
+        })()
+      const res = await api.get(`/api/tasks/project/${projectId}/user/${userId}`)
       return res.data
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch tasks')
+    }
+  }
+)
+export const fetchUpdateTaskStaus = createAsyncThunk(
+  'project/fetchUpdateTaskStaus',
+  async (data, { rejectWithValue,dispatch  }) => {
+    let payload = {
+      status:data.status
+    }
+    try {
+      const res = await api.put(`/api/tasks/taskUpdate/${data.id}`,payload)
+      console.log('res.data',res.data)
+      // if(res.data){
+      //   dispatch(fetchProjectTasks(data.projectId))
+      // }
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch projects')
     }
   }
 )
@@ -40,8 +66,10 @@ const projectSlice = createSlice({
   reducers: {
     setSelectedProjectId(state, action) {
       state.selectedProjectId = action.payload
-      state.tasks = []
     },
+     setTasks: (state, action) => {
+    state.tasks = action.payload;
+  },
     clearProjectSelection(state) {
       state.selectedProjectId = null
       state.tasks = []
@@ -55,11 +83,10 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjectOptions.fulfilled, (state, action) => {
         state.loading = false
-        // state.projectOptions = action.payload || []
-        state.projectOptions = action.payload.map((project) => ({
-            value: project.id,
-            label: project.projectName,
-          }));
+        state.projectOptions = (action.payload || []).map((project) => ({
+          value: project.id,
+          label: project.projectName,
+        }))
       })
       .addCase(fetchProjectOptions.rejected, (state, action) => {
         state.loading = false
@@ -71,14 +98,29 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjectTasks.fulfilled, (state, action) => {
         state.loading = false
-        state.tasks = action.payload || []
+        state.tasks = Array.isArray(action.payload)
+          ? action.payload
+          : action.payload?.tasks || []
       })
       .addCase(fetchProjectTasks.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
       })
+      // .addCase(fetchUpdateTaskStaus.pending, (state) => {
+      //   state.loading = true
+      //   state.error = null
+      // })
+      // .addCase(fetchUpdateTaskStaus.fulfilled, (state, action) => {
+      //   state.loading = false
+        
+      //   // Handle the response if needed
+      // })
+      // .addCase(fetchUpdateTaskStaus.rejected, (state, action) => {
+      //   state.loading = false
+      //   state.error = action.payload
+      // })
   },
 })
 
-export const { setSelectedProjectId, clearProjectSelection } = projectSlice.actions
+export const { setSelectedProjectId, clearProjectSelection ,setTasks } = projectSlice.actions
 export default projectSlice.reducer
