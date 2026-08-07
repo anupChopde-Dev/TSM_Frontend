@@ -1,5 +1,5 @@
 import React from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { DeleteIcon, Eye, EyeOff, Trash } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../api/axiosClient'
 import useApi from '../../hooks/useApi'
@@ -10,7 +10,6 @@ const Users = () => {
   const { data: users = [], loading, error, refetch } = useApi('/api/users', {}, { dedupe: false })
 
   const handleToggleBlock = async (user) => {
-    console.log(user)
     try {
       await api.patch(`/api/users/${user.id}/block`, { isBlock: !user.isBlock })
       await refetch()
@@ -71,7 +70,7 @@ const Users = () => {
                   <TableCell className={user.isBlock ? 'text-rose-300' : 'text-emerald-300'}>
                     {user.isBlock ? 'Inactive' : 'Active'}
                   </TableCell>
-                  <TableCell className="px-6 py-4 text-center">
+                  <TableCell className="px-6 py-4 text-center flex justify-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleToggleBlock(user)}
@@ -79,6 +78,14 @@ const Users = () => {
                       aria-label={user.isBlock ? `Activate ${user.username}` : `Block ${user.username}`}
                     >
                       {user.isBlock ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBlock(user)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-red-400 hover:text-red-300"
+                      
+                    >
+                      <Trash size={18} />
                     </button>
                   </TableCell>
                 </TableRow>

@@ -41,7 +41,6 @@ export const fetchUpdateTaskStaus = createAsyncThunk(
     }
     try {
       const res = await api.put(`/api/tasks/taskUpdate/${data.id}`,payload)
-      console.log('res.data',res.data)
       // if(res.data){
       //   dispatch(fetchProjectTasks(data.projectId))
       // }
@@ -55,6 +54,7 @@ export const fetchUpdateTaskStaus = createAsyncThunk(
 const initialState = {
   projectOptions: [],
   selectedProjectId: null,
+  selectedProject: null,
   tasks: [],
   loading: false,
   error: null,
@@ -65,8 +65,10 @@ const projectSlice = createSlice({
   initialState,
   reducers: {
     setSelectedProjectId(state, action) {
-      state.selectedProjectId = action.payload
+      state.selectedProjectId = action.payload.id
+      state.selectedProject = action.payload?.project?.label
     },
+    
      setTasks: (state, action) => {
     state.tasks = action.payload;
   },

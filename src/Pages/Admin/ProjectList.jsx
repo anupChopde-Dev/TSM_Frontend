@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
-import toast from 'react-hot-toast'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import ProjectModal from '../../components/ProjectModal'
 import api from '../../api/axiosClient'
+import { toast, ToastContainer } from 'react-toastify'
+import { SquarePen, Trash } from 'lucide-react'
 
 const normalizeProjects = (rawProjects = []) =>
   (Array.isArray(rawProjects) ? rawProjects : rawProjects?.projects || []).map((project, index) => {
@@ -101,11 +102,15 @@ const ProjectList = () => {
     try {
       if (editingProject?.id || editingProject?._id) {
         const id = editingProject.id || editingProject._id
-        await api.put(`/api/projects/${id}`, payload)
-        toast.success('Project updated successfully')
+        const res = await api.put(`/api/projects/${id}`, payload)
+        if(res.status===200){
+          toast.success('Project updated successfully')
+        }
       } else {
-        await api.post('/api/projects', payload)
-        toast.success('Project created successfully')
+        const res = await api.post('/api/projects', payload)
+        if(res.status===200){
+          toast.success('Project created successfully')
+        }
       }
 
       setOpen(false)
@@ -114,6 +119,23 @@ const ProjectList = () => {
     } catch (err) {
       toast.error('Could not save project')
       console.error('Project save failed', err)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this Project?')
+
+    if (!confirmed) return
+
+    try {
+      let res =await api.delete(`/api/projects/delete/${id}`)
+      if(res.status===200){
+        toast.success('Project deleted successfully')
+      }
+
+       await fetchProjects()
+    } catch (error) {
+      console.error('Failed to delete project', error)
     }
   }
 
@@ -157,8 +179,8 @@ const ProjectList = () => {
                     <TableCell className="text-slate-400">{project.timeline}</TableCell>
                     <TableCell className="px-6 py-4">
                       <div className="flex justify-center gap-2">
-                        <Button
-                          variant="secondary"
+                        <button
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-cyan-400 hover:text-cyan-300"
                           size="sm"
                           onClick={() => {
                             const rawProject = projects.find((item) => item.id === project.id || item._id === project.id)
@@ -166,11 +188,13 @@ const ProjectList = () => {
                             setOpen(true)
                           }}
                         >
-                          Edit
-                        </Button>
-                        <Button variant="destructive" size="sm">
-                          Delete
-                        </Button>
+                          <SquarePen size={18} />
+                        </button>
+                        <button variant="outline"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-100 transition hover:border-red-400 hover:text-red-300"
+                         size="sm" onClick={() => handleDelete(project.id)}>
+                          <Trash size={18} />
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>

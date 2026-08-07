@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -18,92 +18,127 @@ import {
 
 import { CSS } from "@dnd-kit/utilities";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProjectTasks, fetchUpdateTaskStaus, setTasks } from "../../store/projectSlice";
 
-// ---------------- API DATA ----------------
-const apiData = [
-  {
-    id: "6a69f2ba2650d25cc9db6c7c",
-    taskName: "Implement API",
-    description: "API Integration",
-    sp: 2,
-    priority: "Medium",
-    status: "todo",
-  },
-  {
-    id: "6a69f29f2650d25cc9db6c7a",
-    taskName: "Create Form",
-    description: "Create User Form",
-    sp: 5,
-    priority: "High",
-    status: "todo",
-  },
-  {
-    id: "6a69f29f2650d25cc9db6c7b",
-    taskName: "Testing",
-    description: "Testing Module",
-    sp: 3,
-    priority: "Low",
-    status: "review",
-  },
-  {
-    id: "6a69f29f2650d25cc9db6c7d",
-    taskName: "Deployment",
-    description: "Deploy Project",
-    sp: 8,
-    priority: "Urgent",
-    status: "completed",
-  },
-];
+import {
+  fetchProjectTasks,
+  fetchUpdateTaskStaus,
+  setTasks,
+} from "../../store/projectSlice";
 
-// -------- Group Tasks by Status ----------
-const groupTasks = (tasks) => ({
-  todo: tasks?.filter((task) => task.status === "todo"),
-  inprogress: tasks?.filter((task) => task.status === "inprogress"),
-  review: tasks?.filter((task) => task.status === "review"),
-  completed: tasks?.filter((task) => task.status === "completed"),
+import {
+  ClipboardList,
+  Loader2,
+  SearchCheck,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+
+/* ---------------------------------------------------
+   STATUS CONFIG
+---------------------------------------------------- */
+
+const STATUS = {
+  todo: {
+    title: "To Do",
+    icon: ClipboardList,
+    color: "#6366f1",
+    bg: "#eef2ff",
+  },
+  inprogress: {
+    title: "In Progress",
+    icon: Loader2,
+    color: "#f59e0b",
+    bg: "#fffbeb",
+  },
+  review: {
+    title: "Review",
+    icon: SearchCheck,
+    color: "#8b5cf6",
+    bg: "#f5f3ff",
+  },
+  completed: {
+    title: "Completed",
+    icon: CheckCircle2,
+    color: "#22c55e",
+    bg: "#ecfdf5",
+  },
+};
+
+/* ---------------------------------------------------
+   PRIORITY COLORS
+---------------------------------------------------- */
+
+const priorityColor = {
+  Low: "#22c55e",
+  Medium: "#f59e0b",
+  High: "#ef4444",
+  Urgent: "#dc2626",
+};
+
+/* ---------------------------------------------------
+   GROUP TASKS
+---------------------------------------------------- */
+
+const groupTasks = (tasks = []) => ({
+  todo: tasks.filter((t) => t.status === "todo"),
+  inprogress: tasks.filter((t) => t.status === "inprogress"),
+  review: tasks.filter((t) => t.status === "review"),
+  completed: tasks.filter((t) => t.status === "completed"),
 });
 
+/* ---------------------------------------------------
+   MAIN COMPONENT
+---------------------------------------------------- */
+
 export default function TodoBoard() {
-  const tasks = useSelector((state) => state.project.tasks)
+  const dispatch = useDispatch();
+
+  const tasks = useSelector((state) => state.project.tasks);
+  const {selectedProject} = useSelector((state) => state.project);
 
   const [activeTask, setActiveTask] = useState(null);
 
   const columns = useMemo(() => groupTasks(tasks), [tasks]);
-  console.log('columns', columns)
-  const dispatch = useDispatch()
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
-  const priorityColor = {
-    High: "#ef4444",
-    Medium: "#f59e0b",
-    Low: "#22c55e",
-    Urgent: "#dc2626",
-  };
+  /* --------------------------------------------
+      FIND CONTAINER
+  --------------------------------------------- */
 
   const findContainer = (id) => {
+    if (STATUS[id]) return id;
 
-  if (["todo", "inprogress", "review", "completed"].includes(id)) {
-    return id;
-  }
-
-  return Object.keys(columns).find((key) =>
-    columns[key]?.some((item) => item.id === id)
-  );
-};
-
-  const findTask = (id) => {
-    return tasks.find((task) => task.id === id);
+    return Object.keys(columns).find((column) =>
+      columns[column].some((task) => task.id === id)
+    );
   };
 
-  // ---------------- DRAG START ----------------
+  /* --------------------------------------------
+      FIND TASK
+  --------------------------------------------- */
+
+  const findTask = (id) => tasks.find((t) => t.id === id);
+
+  /* --------------------------------------------
+      DRAG START
+  --------------------------------------------- */
 
   const handleDragStart = ({ active }) => {
-    setActiveTask(findTask(active.id));
+    const task = findTask(active.id);
+
+    if (task) setActiveTask(task);
   };
 
-  // ---------------- DRAG END ----------------
+  /* --------------------------------------------
+      DRAG END
+  --------------------------------------------- */
 
   const handleDragEnd = ({ active, over }) => {
     setActiveTask(null);
@@ -115,87 +150,87 @@ export default function TodoBoard() {
 
     if (!activeContainer || !overContainer) return;
 
-    // Copy current grouped columns
-    const updatedColumns = groupTasks(tasks);
+    /* --------------------------------------------
+        SAME COLUMN SORT
+    --------------------------------------------- */
 
-    // Same Column Sorting
     if (activeContainer === overContainer) {
-      const oldIndex = updatedColumns[activeContainer].findIndex(
-        (t) => t.id === active.id
+      const grouped = groupTasks(tasks);
+
+      const oldIndex = grouped[activeContainer].findIndex(
+        (item) => item.id === active.id
       );
 
-      const newIndex = updatedColumns[activeContainer].findIndex(
-        (t) => t.id === over.id
+      const newIndex = grouped[activeContainer].findIndex(
+        (item) => item.id === over.id
       );
 
       if (oldIndex === newIndex) return;
 
-      updatedColumns[activeContainer] = arrayMove(
-        updatedColumns[activeContainer],
+      grouped[activeContainer] = arrayMove(
+        grouped[activeContainer],
         oldIndex,
         newIndex
       );
 
-      const newTasks = [
-        ...updatedColumns.todo,
-        ...updatedColumns.inprogress,
-        ...updatedColumns.review,
-        ...updatedColumns.completed,
-      ];
-
-      setTasks(newTasks);
+      dispatch(
+        setTasks([
+          ...grouped.todo,
+          ...grouped.inprogress,
+          ...grouped.review,
+          ...grouped.completed,
+        ])
+      );
 
       return;
     }
 
-    // ---------------- Move Between Columns ----------------
+    /* --------------------------------------------
+        MOVE TO ANOTHER COLUMN
+    --------------------------------------------- */
 
-   const oldTask = findTask(active.id);
+    const oldTask = findTask(active.id);
 
-if (!oldTask) return;
+    if (!oldTask) return;
 
+    const updatedTask = {
+      ...oldTask,
+      status: overContainer,
+    };
 
-const movedTask = {
-  ...oldTask,
-  status: overContainer,
-};
+    const optimisticTasks = tasks.map((task) =>
+      task.id === updatedTask.id ? updatedTask : task
+    );
 
+    dispatch(setTasks(optimisticTasks));
 
-// Optimistic update
-const updatedTasks = tasks.map((task) =>
-  task.id === active.id ? movedTask : task
-);
-
-
-dispatch(setTasks(updatedTasks));
-
-
-// API update
-const payload = {
-  id: movedTask.id,
-  status: movedTask.status,
-  userId: movedTask.userId,
-  projectId: movedTask.projectId,
-};
-
-
-dispatch(fetchUpdateTaskStaus(payload))
-.unwrap()
-.then(() => {
-  dispatch(fetchProjectTasks(movedTask.projectId));
-})
-.catch(() => {
-  // rollback if API fails
-  dispatch(setTasks(tasks));
-});
+    dispatch(
+      fetchUpdateTaskStaus({
+        id: updatedTask.id,
+        status: updatedTask.status,
+        userId: updatedTask.userId,
+        projectId: updatedTask.projectId,
+      })
+    )
+      .unwrap()
+      .then(() => {
+        dispatch(fetchProjectTasks(updatedTask.projectId));
+      })
+      .catch(() => {
+        dispatch(setTasks(tasks));
+      });
   };
+    /* =====================================================
+      COLUMN COMPONENT
+  ===================================================== */
 
-  // ---------------- COLUMN ----------------
-
-  function Column({ id, title, tasks }) {
+  function Column({ id, tasks }) {
     const { setNodeRef, isOver } = useDroppable({
       id,
     });
+
+    const config = STATUS[id];
+    const Icon = config.icon;
 
     return (
       <SortableContext
@@ -204,28 +239,111 @@ dispatch(fetchUpdateTaskStaus(payload))
       >
         <div
           ref={setNodeRef}
-          className="rounded-xl p-4 min-h-[500px] transition-all"
+          className={`
+            rounded-3xl
+            transition-all
+            duration-300
+            p-5
+            min-h-[650px]
+            border
+            backdrop-blur-xl
+          `}
           style={{
             background: isOver
-              ? "var(--primary-soft)"
-              : "var(--surface)",
-            border: `2px solid ${isOver ? "var(--primary)" : "var(--border)"
-              }`,
-            boxShadow: "var(--shadow)",
+              ? "linear-gradient(180deg,#ffffff,#f8fafc)"
+              : "#ffffff",
+            borderColor: isOver ? config.color : "#e5e7eb",
+            boxShadow: isOver
+              ? `0 20px 50px ${config.color}30`
+              : "0 8px 30px rgba(15,23,42,.08)",
           }}
         >
-          <h2
-            className="font-semibold text-lg mb-4"
+          {/* HEADER */}
+
+          <div
+            className="rounded-2xl px-4 py-3 mb-5 flex items-center justify-between"
             style={{
-              color: "var(--text-primary)",
+              background: config.bg,
             }}
           >
-            {id} ({tasks.length})
-          </h2>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center"
+                style={{
+                  background: config.color,
+                }}
+              >
+                <Icon
+                  size={22}
+                  color="white"
+                  className={
+                    id === "inprogress"
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+              </div>
 
-          <div className="space-y-3">
+              <div>
+                <h2
+                  className="font-bold text-lg"
+                  style={{
+                    color: "#111827",
+                  }}
+                >
+                  {config.title}
+                </h2>
+
+                <p className="text-xs text-gray-500">
+                  {tasks.length} Tasks
+                </p>
+              </div>
+            </div>
+
+            <span
+              className="rounded-full px-3 py-1 text-white text-xs font-semibold"
+              style={{
+                background: config.color,
+              }}
+            >
+              {tasks.length}
+            </span>
+          </div>
+
+          {/* TASK LIST */}
+
+          <div className="space-y-4">
+            {tasks.length === 0 && (
+              <div
+                className="
+                  rounded-2xl
+                  border-2
+                  border-dashed
+                  border-gray-300
+                  p-8
+                  text-center
+                  text-gray-400
+                  bg-gray-50
+                "
+              >
+                <AlertCircle
+                  size={38}
+                  className="mx-auto mb-3"
+                />
+
+                <p>No Tasks</p>
+
+                <span className="text-xs">
+                  Drag task here
+                </span>
+              </div>
+            )}
+
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+              />
             ))}
           </div>
         </div>
@@ -233,9 +351,11 @@ dispatch(fetchUpdateTaskStaus(payload))
     );
   }
 
-  // ---------------- CARD ----------------
+  /* =====================================================
+      TASK CARD
+  ===================================================== */
 
-  function TaskCard({ task, overlay }) {
+  function TaskCard({ task, overlay = false }) {
     const sortable = useSortable({
       id: task.id,
     });
@@ -243,66 +363,132 @@ dispatch(fetchUpdateTaskStaus(payload))
     const style = overlay
       ? {}
       : {
-        transform: CSS.Transform.toString(sortable.transform),
-        transition: sortable.transition,
-        opacity: sortable.isDragging ? 0.4 : 1,
-      };
+          transform: CSS.Transform.toString(
+            sortable.transform
+          ),
+          transition: sortable.transition,
+          opacity: sortable.isDragging ? 0.35 : 1,
+        };
 
     return (
       <div
-        ref={overlay ? null : sortable.setNodeRef}
+        ref={
+          overlay
+            ? null
+            : sortable.setNodeRef
+        }
         style={{
           ...style,
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
+
+          background:
+            "linear-gradient(180deg,#ffffff,#fafafa)",
+
+          border: "1px solid #edf2f7",
+
           boxShadow: overlay
-            ? "0 20px 40px rgba(79,70,229,.18)"
-            : "0 4px 12px rgba(15,23,42,.08)",
+            ? "0 30px 60px rgba(0,0,0,.18)"
+            : "0 8px 18px rgba(15,23,42,.08)",
         }}
-        {...(!overlay ? sortable.attributes : {})}
-        {...(!overlay ? sortable.listeners : {})}
-        className="rounded-xl p-4 cursor-grab active:cursor-grabbing"
+        {...(!overlay
+          ? sortable.attributes
+          : {})}
+        {...(!overlay
+          ? sortable.listeners
+          : {})}
+        className="
+            rounded-2xl
+            p-5
+            cursor-grab
+            active:cursor-grabbing
+            hover:-translate-y-1
+            hover:shadow-2xl
+            transition-all
+            duration-300
+            group
+        "
       >
-        <div className="flex justify-between items-start mb-2">
-          <h3
-            className="font-semibold"
-            style={{
-              color: "var(--text-primary)",
-            }}
-          >
-            {task.taskName}
-          </h3>
+        {/* TOP HEADER */}
+
+        <div className="flex justify-between items-start">
+          <div>
+            <h3
+              className="
+                font-bold
+                text-base
+                text-gray-800
+                group-hover:text-indigo-600
+                transition
+              "
+            >
+              {task.taskName}
+            </h3>
+
+            <p className="text-sm text-gray-500 mt-1">
+              {task.description}
+            </p>
+          </div>
 
           <span
-            className="px-2 py-1 rounded-full text-xs text-white"
+            className="
+              px-3
+              py-1
+              rounded-full
+              text-xs
+              font-semibold
+              text-white
+            "
             style={{
-              background: priorityColor[task.priority],
+              background:
+                priorityColor[task.priority],
             }}
           >
             {task.priority}
           </span>
         </div>
 
-        <p
-          className="text-sm"
-          style={{
-            color: "var(--text-muted)",
-          }}
-        >
-          {task.description}
-        </p>
+        {/* FOOTER */}
+                {/* FOOTER */}
 
-        <div
-          className="mt-3 text-sm font-semibold"
-          style={{
-            color: "var(--primary)",
-          }}
-        >
-          SP : {task.sp}
+        <div className="mt-5 flex items-center justify-between">
+          {/* Story Point */}
+
+          <div
+            className="
+              flex
+              items-center
+              gap-2
+              px-3
+              py-2
+              rounded-xl
+              bg-indigo-50
+            "
+          >
+            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+
+            <span className="text-sm font-semibold text-indigo-600">
+              SP : {task.sp}
+            </span>
+          </div>
+
+          {/* STATUS */}
+
+          <span
+            className="text-xs font-medium px-3 py-2 rounded-xl"
+            style={{
+              background: STATUS[task.status]?.bg,
+              color: STATUS[task.status]?.color,
+            }}
+          >
+            {STATUS[task.status]?.title}
+          </span>
         </div>
       </div>
     );
   }
+
+  /* =====================================================
+      MAIN UI
+  ===================================================== */
 
   return (
     <DndContext
@@ -312,34 +498,79 @@ dispatch(fetchUpdateTaskStaus(payload))
       onDragEnd={handleDragEnd}
     >
       <div
-        className="grid grid-cols-4 gap-6 p-6 rounded-2xl"
+        className="
+          min-h-screen
+          p-8
+          rounded-3xl
+        "
         style={{
-          background: "var(--surface-soft)",
+          background:
+            "linear-gradient(135deg,#eef2ff 0%,#f8fafc 35%,#ffffff 100%)",
         }}
       >
-        <Column id="todo" title="Todo" tasks={columns.todo} />
+        {/* PAGE HEADER */}
 
-        <Column
-          id="inprogress"
-          title="In Progress"
-          tasks={columns.inprogress}
-        />
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800">
+              {selectedProject || 'Project'}
+            </h1>
 
-        <Column
-          id="review"
-          title="Review"
-          tasks={columns.review}
-        />
+            <p className="text-gray-500 mt-2">
+              Drag & Drop Tasks 
+            </p>
+          </div>
 
-        <Column
-          id="completed"
-          title="Completed"
-          tasks={columns.completed}
-        />
+          <div className="px-5 py-3 rounded-2xl bg-white shadow-lg border">
+            <span className="text-gray-500">
+              Total Tasks
+            </span>
+
+            <h2 className="text-2xl font-bold text-indigo-600">
+              {tasks.length}
+            </h2>
+          </div>
+        </div>
+
+        {/* BOARD */}
+
+        <div className="grid xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-2 grid-cols-1 gap-6">
+          <Column
+            id="todo"
+            tasks={columns.todo}
+          />
+
+          <Column
+            id="inprogress"
+            tasks={columns.inprogress}
+          />
+
+          <Column
+            id="review"
+            tasks={columns.review}
+          />
+
+          <Column
+            id="completed"
+            tasks={columns.completed}
+          />
+        </div>
       </div>
 
-      <DragOverlay>
-        {activeTask && <TaskCard task={activeTask} overlay />}
+      {/* DRAG OVERLAY */}
+
+      <DragOverlay
+        dropAnimation={{
+          duration: 250,
+          easing: "ease",
+        }}
+      >
+        {activeTask ? (
+          <TaskCard
+            task={activeTask}
+            overlay
+          />
+        ) : null}
       </DragOverlay>
     </DndContext>
   );

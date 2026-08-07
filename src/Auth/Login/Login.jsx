@@ -234,7 +234,7 @@ const Login = () => {
             </div>
 
             {/* Social Login */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 className="rounded-xl border border-slate-700 bg-slate-950 py-2.5 text-xs font-medium transition-all duration-300 hover:border-cyan-500 hover:bg-slate-800"
@@ -247,7 +247,7 @@ const Login = () => {
               >
                 GitHub
               </button>
-            </div>
+            </div> */}
 
             {/* Signup Link */}
             <div className="mt-6 text-center">
