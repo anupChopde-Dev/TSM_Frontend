@@ -71,6 +71,15 @@ const Modal = ({ open, onClose, users = [], project = null, onSave, onCreate }) 
         }
       }
     }
+    else{
+      reset({
+        projectName: '',
+        users: [],
+        startDate: '',
+        endDate: '',
+        selectedTasks: [],
+      })
+    }
 
     const loadTasks = async () => {
       setLoadingTasks(true)
@@ -114,7 +123,6 @@ const Modal = ({ open, onClose, users = [], project = null, onSave, onCreate }) 
     } else if (onCreate) {
       onCreate(mapped)
     } else {
-      console.log('Project create', mapped)
     }
     reset()
   }

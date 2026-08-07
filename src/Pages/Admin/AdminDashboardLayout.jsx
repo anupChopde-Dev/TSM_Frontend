@@ -10,16 +10,16 @@ import Reports from './Reports'
 import TaskList from './TaskList'
 
 const navItems = [
-  { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
+  // { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
   { id: 'users', label: 'Users', icon: <UsersIcon size={18} /> },
   { id: 'projects', label: 'Projects', icon: <LayoutGrid size={18} /> },
   { id: 'tasks', label: 'Task List', icon: <SettingsIcon size={18} /> },
-  { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
+  // { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
 ]
 
 const AdminDashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false)
-  const [activeItem, setActiveItem] = useState('overview')
+  const [activeItem, setActiveItem] = useState('users')
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -108,7 +108,7 @@ const AdminDashboardLayout = () => {
         {/* Stats */}
       
 
-        <section className="mt-3 grid gap-4 lg:grid-cols-3">
+        {/* <section className="mt-3 grid gap-4 lg:grid-cols-3">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6">
             <p className="text-sm uppercase tracking-[0.3em] text-slate-500">
               Users
@@ -144,7 +144,7 @@ const AdminDashboardLayout = () => {
               All monitored services are healthy
             </p>
           </div>
-        </section>
+        </section> */}
 
         {/* Dynamic Content */}
         <section className="mt-3 flex-1 rounded-t-3xl border border-slate-800 bg-slate-900/80 p-4">
